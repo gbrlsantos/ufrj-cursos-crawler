@@ -7,8 +7,8 @@ class Curso:
         self.versoes_curriculares = versoes_curriculares
 
 def get_lista_cursos():
-    baseUrl = 'https://siga.ufrj.br/sira/repositorio-curriculo/'
-    url = 'https://siga.ufrj.br/sira/repositorio-curriculo/comboListaCursos.html'
+    base_url = 'https://siga.ufrj.br/sira/repositorio-curriculo/'
+    url = f"{base_url}comboListaCursos.html"
 
     # requests main page
     request_page = requests.get(url)
@@ -19,7 +19,7 @@ def get_lista_cursos():
     lista_cursos_file = page_js_link.rsplit(" ")[2].rsplit("'")[1] 
 
     # does final request 
-    lista_cursos_url = (baseUrl + lista_cursos_file)
+    lista_cursos_url = (base_url + lista_cursos_file)
     request_lista_cursos = requests.get(lista_cursos_url).text
     lista_cursos_html = BeautifulSoup(request_lista_cursos, 'html.parser')
 
