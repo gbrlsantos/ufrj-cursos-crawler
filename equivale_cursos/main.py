@@ -6,7 +6,7 @@ class Curso:
         self.nome = nome
         self.versoes_curriculares = versoes_curriculares
 
-def getListaCursos():
+def get_lista_cursos():
     baseUrl = 'https://siga.ufrj.br/sira/repositorio-curriculo/'
     url = 'https://siga.ufrj.br/sira/repositorio-curriculo/comboListaCursos.html'
 
@@ -25,7 +25,7 @@ def getListaCursos():
 
     return lista_cursos_html
 
-def getVersoesCurso(lista_cursos_html):
+def get_versoes_curso(lista_cursos_html):
     versoes_cursos = []
 
     linhas_lista_cursos = lista_cursos_html.find_all("tr", class_="tableTitleBlue")
@@ -44,7 +44,7 @@ def getVersoesCurso(lista_cursos_html):
 
     return versoes_cursos
 
-def viewVersoesCursos(versoes_cursos):
+def view_versoes_cursos(versoes_cursos):
     for curso in versoes_cursos:
         print("Nome:", curso.nome)
         print("Versões curriculares:")
@@ -53,9 +53,9 @@ def viewVersoesCursos(versoes_cursos):
         print("\n")
 
 
-lista_cursos_html = getListaCursos()
-versoes_cursos = getVersoesCurso(lista_cursos_html)
-viewVersoesCursos(versoes_cursos)
+lista_cursos_html = get_lista_cursos()
+versoes_cursos = get_versoes_curso(lista_cursos_html)
+view_versoes_cursos(versoes_cursos)
 
 
 
