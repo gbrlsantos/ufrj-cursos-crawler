@@ -103,6 +103,7 @@ celerybeat.pid
 
 # VSCode
 .vscode/
+launch.json
 
 # Environments
 .env
