@@ -1,9 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
+import conn
 
 BASE_URL = 'https://siga.ufrj.br/'
 SIRA_PATH = 'sira/repositorio-curriculo/'
-
 class VersoesCursos:
     url_cursos_versoes = []
     versoes_cursos = []
@@ -50,19 +50,29 @@ def get_versoes_curso(lista_cursos_html):
     url_cursos_versoes = VersoesCursos.url_cursos_versoes
 
     linhas_lista_cursos = lista_cursos_html.find_all("tr", class_="tableTitleBlue")
+    linhas_lista_cursos += lista_cursos_html.find_all("tr", class_="tableBodyBlue1")
+    linhas_lista_cursos += lista_cursos_html.find_all("tr", class_="tableBodyBlue2")
 
     for linha_curso in linhas_lista_cursos:
-        try:
-            nome_do_curso = linha_curso.contents[0].find("b").text
-            versoes_do_curso = linha_curso.contents[2].find_all("a", class_="linkNormal")
+        
+        if "align" in linha_curso.contents[0].attrs:
+            continue
 
-            for i, versao_curso in enumerate(versoes_do_curso):
-                versoes_do_curso[i] = versao_curso.text
-                url_cursos_versoes.append(versao_curso['href'])          
+        nome_do_curso = linha_curso.contents[0].find("b").text
+        versoes_do_curso = linha_curso.contents[2].find_all("a", class_="linkNormal")
+
+        if "\n" in nome_do_curso:
+            nome_do_curso = nome_do_curso[1:len(nome_do_curso)]
+
+        for i, versao_curso in enumerate(versoes_do_curso):
+            sql = 'INSERT INTO versoes_cursos (nome_curso, versao_curso) VALUES (%s, %s)'
+            values = (nome_do_curso, versao_curso.text)
+            conn.mycursor.execute(sql, values)
+            conn.mydb.commit()
+            versoes_do_curso[i] = versao_curso.text
+            url_cursos_versoes.append(versao_curso['href'])          
 
             versoes_cursos.append(VersoesCursos(nome_do_curso, versoes_do_curso))
-        except:
-            pass
 
 def get_disciplinas_links(disciplina_url):
     for url in disciplina_url:
@@ -88,10 +98,19 @@ def get_disciplinas(curso_page):
     request_page_html = BeautifulSoup(request_page.text, 'html.parser')
 
     nome_curso = request_page_html.findAll("tr", class_="tableTitle")[0].find("b").contents[0]
-    nome_curso = nome_curso.split("em ")[1]
+    nome_curso = nome_curso.split("Graduação em ")[1]
 
+    if "(OVL)" in nome_curso:
+        nome_curso = nome_curso.split("(OVL)")[0]
+
+    if "(CMT)" in nome_curso:
+        nome_curso = nome_curso.split("(CMT)")[0]
+    
     curriculo = request_page_html.findAll("tr", class_="tableTitleBlue")[0].find("b").text
     curriculo = curriculo.split("de ")[1]
+
+    if nome_curso == 'Bacharelado em Letras':
+        print("stop")
 
     periodos = request_page_html.findAll("table", class_="cellspacingTable")
     del periodos[0] 
@@ -102,6 +121,14 @@ def get_disciplinas(curso_page):
     disciplinas_por_curso = DisciplinasCursos.disciplinas_por_curso
 
     for periodo in periodos:
+        sql = "SELECT * FROM versoes_cursos WHERE nome_curso = %s AND versao_curso = %s"
+        values = (nome_curso, curriculo)
+        conn.mycursor.execute(sql, values)
+        myresult = conn.mycursor.fetchall()
+
+        for result in myresult:
+            versao_curso_id = result[0]
+
         linhas_das_disciplinas = periodo.findAll("tr", class_="tableBodyBlue2")
         linhas_das_disciplinas += periodo.findAll("tr", class_="tableBodyBlue1")
         codigo = periodo.findAll("a", class_="linkNormal")
@@ -110,10 +137,28 @@ def get_disciplinas(curso_page):
             try:
                 codigo = linha_disciplina.find("a", class_="linkNormal").text
                 nome = linha_disciplina.findAll("td")[1].text
+
+                sql = "SELECT * FROM codigos_disciplinas WHERE codigo_disciplina = %s"
+                value = (codigo,)
+                conn.mycursor.execute(sql, value)
+                myresult = conn.mycursor.fetchall()
+
+                # podem existir disciplinas de mesmo código em versões diferentes do curso
+                if myresult == []:
+                    sql = "INSERT INTO codigos_disciplinas (codigo_disciplina, nome_disciplina) VALUES (%s, %s)"
+                    values = (codigo, nome)
+                    conn.mycursor.execute(sql, values)
+                    conn.mydb.commit()
+                    codigos_do_curso.append(codigo)
+
+                sql = "INSERT INTO disciplinas_cursos (versao_curso_id, codigo_disciplina) VALUES (%s, %s)"
+                values = (versao_curso_id, codigo)
+                conn.mycursor.execute(sql, values)
+                conn.mydb.commit()
+
                 disciplinas.append(DisciplinasCodigos(nome, codigo))
-                codigos_do_curso.append(codigo)
-            except Exception:
-                pass
+            except Exception as err:
+                print(err)
 
     disciplinas_por_curso.append(DisciplinasCursos(nome_curso, curriculo, codigos_do_curso))
 
